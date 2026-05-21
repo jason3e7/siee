@@ -1,6 +1,15 @@
 import os
+import logging
 import httpx
 from mcp.server.fastmcp import FastMCP
+
+_debug = os.environ.get("DEBUG", "").lower() in ("1", "true")
+logging.basicConfig(
+    level=logging.DEBUG if _debug else logging.INFO,
+    format="%(asctime)s %(levelname)-8s %(name)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+log = logging.getLogger("siee.mcp")
 
 SIEE_URL = os.environ.get("SIEE_URL", "http://localhost:5000")
 
@@ -48,7 +57,10 @@ def deploy(files: dict[str, str]) -> dict:
     Returns:
         {"status": "deployed", "files": [...]}
     """
-    return _deploy(files)
+    log.info("tool deploy: files=%s", list(files.keys()))
+    result = _deploy(files)
+    log.debug("tool deploy result: %s", result)
+    return result
 
 
 @mcp.tool()
@@ -64,7 +76,10 @@ def exec_command(command: str, args: list[str] = []) -> dict:
     Returns:
         {"exec_id": "...", "status": "RUNNING"}
     """
-    return _exec_command(command, args)
+    log.info("tool exec_command: command=%s args=%s", command, args)
+    result = _exec_command(command, args)
+    log.debug("tool exec_command result: %s", result)
+    return result
 
 
 @mcp.tool()
@@ -79,7 +94,10 @@ def get_log(exec_id: str) -> dict:
     Returns:
         {"exec_id": "...", "status": "RUNNING|DONE|ERROR", "log": "..."}
     """
-    return _get_log(exec_id)
+    log.debug("tool get_log: exec_id=%s", exec_id)
+    result = _get_log(exec_id)
+    log.info("tool get_log: exec_id=%s status=%s", exec_id, result.get("status"))
+    return result
 
 
 if __name__ == "__main__":

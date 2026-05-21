@@ -4,9 +4,18 @@ import uuid
 import shutil
 import subprocess
 import threading
+import logging
 from datetime import datetime
 
 from flask import Flask, request, jsonify
+
+_debug = os.environ.get("DEBUG", "").lower() in ("1", "true")
+logging.basicConfig(
+    level=logging.DEBUG if _debug else logging.INFO,
+    format="%(asctime)s %(levelname)-8s %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+log = logging.getLogger("siee")
 
 # Server owner configures allowed commands here
 ALLOWED_COMMANDS = {
@@ -54,11 +63,13 @@ def create_app(workspace: str = None, logs_dir: str = None) -> Flask:
             f.write(f"[{ts()}] STATUS: {status}\n")
 
         jobs[exec_id] = status
+        log.info("job done: exec_id=%s status=%s", exec_id, status)
 
     @app.post("/deploy")
     def deploy():
         files = request.files.getlist("file")
         if not files or all(f.filename == "" for f in files):
+            log.warning("deploy: no file provided")
             return jsonify({"error": "no file provided"}), 400
 
         ws = app.config["WORKSPACE"]
@@ -73,6 +84,7 @@ def create_app(workspace: str = None, logs_dir: str = None) -> Flask:
                 f.save(dest)
                 saved.append(f.filename)
 
+        log.info("deploy: files=%s", saved)
         return jsonify({"status": "deployed", "files": saved})
 
     @app.post("/exec")
@@ -82,8 +94,10 @@ def create_app(workspace: str = None, logs_dir: str = None) -> Flask:
         args = data.get("args", [])
 
         if not command:
+            log.warning("exec: command is required")
             return jsonify({"error": "command is required"}), 400
         if command not in ALLOWED_COMMANDS:
+            log.warning("exec: command not allowed: %s", command)
             return jsonify({
                 "error": "command not allowed",
                 "available": list(ALLOWED_COMMANDS.keys()),
@@ -94,6 +108,7 @@ def create_app(workspace: str = None, logs_dir: str = None) -> Flask:
         jobs = app.config["JOBS"]
         jobs[exec_id] = "RUNNING"
 
+        log.info("exec: command=%s args=%s exec_id=%s", command, args, exec_id)
         threading.Thread(
             target=_run_job,
             args=(exec_id, cmd, app.config["WORKSPACE"], app.config["LOGS_DIR"], jobs),
@@ -106,15 +121,18 @@ def create_app(workspace: str = None, logs_dir: str = None) -> Flask:
     def get_logs(exec_id):
         jobs = app.config["JOBS"]
         if exec_id not in jobs:
+            log.warning("get_logs: exec_id not found: %s", exec_id)
             return jsonify({"error": "exec_id not found"}), 404
 
         log_path = os.path.join(app.config["LOGS_DIR"], f"{exec_id}.log")
-        log = ""
+        content = ""
         if os.path.exists(log_path):
             with open(log_path) as f:
-                log = f.read()
+                content = f.read()
 
-        return jsonify({"exec_id": exec_id, "status": jobs[exec_id], "log": log})
+        status = jobs[exec_id]
+        log.debug("get_logs: exec_id=%s status=%s", exec_id, status)
+        return jsonify({"exec_id": exec_id, "status": status, "log": content})
 
     return app
 
