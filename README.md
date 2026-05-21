@@ -52,6 +52,90 @@ You are building a project that integrates with external APIs. You use an AI age
 
 SIEE sits between the agent and the execution environment, holding the secrets and returning only results.
 
+## Quick Start
+
+### 1. Clone and install
+
+```bash
+git clone https://github.com/jason3e7/siee.git
+cd siee
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+### 2. Set your secrets
+
+Secrets are just environment variables on the SIEE machine. Set them before starting the server:
+
+```bash
+export MY_API_KEY="sk-real-token-here"
+export DATABASE_URL="postgres://..."
+```
+
+Or put them in a `.env` file and load it:
+
+```bash
+export $(cat .env | xargs)
+```
+
+### 3. Configure allowed commands
+
+Edit `ALLOWED_COMMANDS` at the top of `server.py` to control what the AI agent is permitted to run:
+
+```python
+ALLOWED_COMMANDS = {
+    "pytest": [sys.executable, "-m", "pytest"],
+    "run":    [sys.executable, "main.py"],
+}
+```
+
+### 4. Start the servers
+
+```bash
+# Terminal 1 — REST API (port 5000)
+python server.py
+
+# Terminal 2 — MCP server for AI agents (port 5001)
+python mcp_server.py
+```
+
+To enable verbose logging:
+
+```bash
+DEBUG=1 python server.py
+DEBUG=1 python mcp_server.py
+```
+
+### 5. Connect an AI agent
+
+On the AI agent's machine, add to `~/.claude/settings.json` or `.claude/settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "siee": {
+      "type": "sse",
+      "url": "http://<SIEE_HOST>:5001/sse"
+    }
+  }
+}
+```
+
+Restart Claude Code. The agent will have access to three tools:
+
+| Tool | Description |
+|------|-------------|
+| `deploy` | Upload files to the execution environment |
+| `exec_command` | Run a whitelisted command, returns `exec_id` |
+| `get_log` | Poll execution status and stdout/stderr |
+
+### 6. Run tests
+
+```bash
+pytest tests/ -v
+```
+
 ## Status
 
 Work in progress.
