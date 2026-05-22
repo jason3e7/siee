@@ -232,7 +232,7 @@ def s01_cover(prs):
     START = Inches((7.5 - 4.6) / 2)
 
     txtbox(slide, ML, START, CW, Inches(0.32),
-           "Open Source  ·  Python  ·  Flask  ·  MCP",
+           "Open Source  ·  Python  ·  Flask  ·  MCP  ·  github.com/jason3e7/siee",
            size=Pt(13.5), color=MUTED, align=PP_ALIGN.CENTER)
 
     txtbox(slide, ML, START + Inches(0.38), CW, Inches(1.05),
@@ -250,7 +250,7 @@ def s01_cover(prs):
     sw = Inches(2.75); sh = Inches(1.6)
     sx = ML + Inches(0.26)
     sy = START + Inches(2.75)
-    for num, lbl in [("3", "MCP Tools"), ("23", "自動化測試"), ("2", "獨立 Server"), ("0", "洩漏的 Secret")]:
+    for num, lbl in [("3", "MCP Tools"), ("27", "自動化測試"), ("2", "獨立 Server"), ("0", "洩漏的 Secret")]:
         stat_box(slide, sx, sy, sw, sh, num, lbl)
         sx += sw + Inches(0.29)
 
@@ -682,6 +682,10 @@ def s12_summary(prs):
         card(slide, cx, cy2, cw2, ch, title=title, body=body,
              border=bc, title_color=bc, body_size=Pt(13.5))
         cx += cw2 + Inches(0.14)
+
+    txtbox(slide, ML, cy2 + ch + Inches(0.18), CW, Inches(0.38),
+           "⭐  github.com/jason3e7/siee",
+           size=Pt(18), color=ACCENT, bold=True, align=PP_ALIGN.CENTER)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
