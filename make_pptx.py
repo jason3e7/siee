@@ -203,7 +203,7 @@ def stat_box(slide, x, y, w, h, number, label):
 def flow_row(slide, items: list[tuple], x, y, h=Inches(0.5)):
     cx = x
     for label, is_cmd, color in items:
-        is_arr = label == "→"
+        is_arr = label in ("→", "←")
         fw = Inches(0.3) if is_arr else Inches(1.4)
         if is_arr:
             shape = rect(slide, cx, y, fw, h, fill_color=BG, border_color=None)
@@ -278,7 +278,7 @@ def s02_problem(prs):
         cx += cw + Inches(0.17)
 
     card(slide, ML, cy + ch + Inches(0.3), CW, Inches(0.95),
-         body="💡  需要一個中間層：AI 部署 code、觸發執行、拿回結果——但 secret 值永遠不進 AI 的 context。",
+         body="💡  不用貼來貼：AI 自動部署 code、觸發執行、拿回結果，全流程自動化——secret 值永遠不進 AI 的 context。",
          border=ACCENT, body_color=ACCENT, body_size=Pt(15),
          fill=RGBColor(0x0a, 0x1f, 0x12))
 
@@ -410,6 +410,10 @@ def s06_api(prs):
          body="取得執行狀態與 stdout/stderr。狀態為 RUNNING / DONE / ERROR，輪詢直到非 RUNNING。\n回傳：{\"exec_id\": \"...\", \"status\": \"DONE\", \"log\": \"...\"}",
          border=PURPLE, title_color=PURPLE, body_size=Pt(13.5))
 
+    txtbox(slide, ML, Inches(6.9), CW, Inches(0.35),
+           "※ MVP 展示版本：核心隔離機制已完整，指令白名單與存取控制可依需求擴充。",
+           size=Pt(12), color=MUTED, italic=True)
+
 
 def s07_allowed_commands(prs):
     slide = blank(prs)
@@ -459,12 +463,12 @@ def s08_mcp(prs):
            "  \"mcpServers\": {\n"
            "    \"siee\": {\n"
            "      \"type\": \"sse\",\n"
-           "      \"url\":  \"http://192.168.14.102:5001/sse\"\n"
+           "      \"url\":  \"http://192.168.0.2:5001/sse\"\n"
            "    }\n"
            "  }\n"
            "}")
 
-    code_block(slide, ML, BODY_TOP + Inches(0.42), HW, Inches(2.8), cfg,
+    code_block(slide, ML, BODY_TOP + Inches(0.42), HW, Inches(3.3), cfg,
                "AI Agent 機器設定", label_color=ACCENT)
 
     tools_code = ("# AI agent 可用的 MCP tools\n\n"
@@ -476,17 +480,17 @@ def s08_mcp(prs):
                   "get_log(exec_id=\"...\")\n"
                   "# → 輪詢直到 DONE/ERROR")
 
-    code_block(slide, R, BODY_TOP + Inches(0.42), HW, Inches(2.8), tools_code,
+    code_block(slide, R, BODY_TOP + Inches(0.42), HW, Inches(3.3), tools_code,
                "AI 使用方式", label_color=BLUE)
 
     cw = Inches(5.86)
-    cy = BODY_TOP + Inches(3.45)
-    card(slide, ML, cy, cw, Inches(1.85),
+    cy = BODY_TOP + Inches(3.92)
+    card(slide, ML, cy, cw, Inches(1.3),
          title="SIEE Server（這台機器）",
-         body="python server.py      # port 5000\npython mcp_server.py  # port 5001\n\n環境變數：SIEE_URL、MCP_PORT 可覆寫",
+         body="python server.py      # port 5000\npython mcp_server.py  # port 5001\n環境變數：SIEE_URL、MCP_PORT 可覆寫",
          border=ACCENT, title_color=ACCENT, body_size=Pt(13.5))
 
-    card(slide, R, cy, cw, Inches(1.85),
+    card(slide, R, cy, cw, Inches(1.3),
          title="SSE 是什麼",
          body="Server-Sent Events：單向 HTTP 長連線\nMCP 用它讓 Claude 保持與 tool server 的連線\n不需要 WebSocket，標準 HTTP 即可",
          border=BLUE, title_color=BLUE, body_size=Pt(13.5))
@@ -503,7 +507,6 @@ def s09_case_env(prs):
     probe_code = ("# AI 部署的環境探針\n"
                   "import sys, subprocess\n"
                   "print('python:', sys.executable)\n"
-                  "print('version:', sys.version)\n"
                   "r = subprocess.run(\n"
                   "    [sys.executable, '-m', 'pip', 'list'],\n"
                   "    capture_output=True, text=True)\n"
@@ -515,27 +518,24 @@ def s09_case_env(prs):
                   "    print('requests FAIL:', e)\n"
                   "    print('sys.path:', sys.path)")
 
-    code_block(slide, ML, BODY_TOP + Inches(0.42), HW, Inches(3.3), probe_code,
+    code_block(slide, ML, BODY_TOP + Inches(0.42), HW, Inches(3.7), probe_code,
                "AI 部署的探針腳本", label_color=BLUE)
 
     stdout_code = ("# Probe 1：系統套件，無 requests\n"
                    "python: /home/user/siee/venv/bin/python\n"
-                   "version: 3.12.3 [GCC 13.3.0]\n"
-                   "... (列出 80+ 系統套件)\n"
+                   "版本: 3.12.3, 80+ 系統套件\n"
                    "requests  ← 不在列表！\n\n"
                    "# Probe 2：路徑確認\n"
                    "requests FAIL: No module named 'requests'\n"
-                   "sys.path: [...,\n"
-                   "  '/home/user/siee/venv/lib/\n"
-                   "   python3.12/site-packages']\n\n"
+                   "sys.path: [..., venv/site-packages]\n\n"
                    "# Probe 3：修復後確認\n"
                    "python: /home/user/siee/venv/bin/python\n"
                    "requests OK: 2.34.2")
 
-    code_block(slide, R, BODY_TOP + Inches(0.42), HW, Inches(3.3), stdout_code,
+    code_block(slide, R, BODY_TOP + Inches(0.42), HW, Inches(3.7), stdout_code,
                "SIEE 回傳的 stdout（AI 看到的）", label_color=ACCENT)
 
-    cw = Inches(3.75); cy = BODY_TOP + Inches(3.95)
+    cw = Inches(3.75); cy = BODY_TOP + Inches(4.35)
     cx = ML
     for title, bc, body in [
         ("5 次 ModuleNotFoundError", DANGER,
@@ -545,7 +545,7 @@ def s09_case_env(prs):
         ("venv 缺少套件 → 修復",     ACCENT,
          "發現 venv 未安裝 requests\n修復後 requests OK: 2.34.2"),
     ]:
-        card(slide, cx, cy, cw, Inches(1.3),
+        card(slide, cx, cy, cw, Inches(1.0),
              title=title, body=body, border=bc, title_color=bc, body_size=Pt(13))
         cx += cw + Inches(0.14)
 
@@ -561,37 +561,34 @@ def s10_case_censys(prs):
     cw4 = Inches(2.85); cy4 = BODY_TOP + Inches(0.42)
     cx4 = ML
     for num, lbl in [("594", "Total Hits"), ("6", "分頁數"), ("2", "資料型態"), ("3", "Retry 次數")]:
-        stat_box(slide, cx4, cy4, cw4, Inches(1.3), num, lbl)
+        stat_box(slide, cx4, cy4, cw4, Inches(1.15), num, lbl)
         cx4 += cw4 + Inches(0.17)
 
     query_code = ("# IP 查詢（geolocation + ASN）\n"
                   "host.ip=\"8.8.8.8\" or\n"
-                  "host.ip=\"8.8.4.4\" or\n"
-                  "host.ip=\"1.1.1.1\"\n"
-                  "→ 3 hits：Google DNS 地理位置、ASN\n\n"
+                  "host.ip=\"8.8.4.4\" or host.ip=\"1.1.1.1\"\n"
+                  "→ 3 hits：Google DNS、位置、ASN\n\n"
                   "# 憑證搜尋（webproperty）\n"
                   "webproperty.ip=\"93.184.216.34\"\n"
                   "→ 594 hits / 6 pages\n"
                   "→ next_page_token 分頁\n"
-                  "→ Resuming session 斷點續傳\n\n"
-                  "# 結果存成 timestamped JSON\n"
+                  "→ Resuming session 斷點續傳\n"
                   "20260522t021403_result.json")
 
-    code_block(slide, ML, BODY_TOP + Inches(1.9), HW, Inches(3.35), query_code,
+    code_block(slide, ML, BODY_TOP + Inches(1.72), HW, Inches(3.8), query_code,
                "實際查詢語法與結果", label_color=ACCENT)
 
     challenges_code = ("# 挑戰 1：ModuleNotFoundError\n"
                        "import requests  # FAIL × 5\n"
-                       "→ 環境探查後修復\n\n"
+                       "→ 探查環境後修復\n\n"
                        "# 挑戰 2：跨 deploy 檔案消失\n"
                        "FileNotFoundError: result.json\n"
-                       "→ deploy 會清空 workspace\n"
-                       "→ 改為當次執行內讀取\n\n"
+                       "→ deploy 清空 workspace\n\n"
                        "# 挑戰 3：查詢語法錯誤\n"
                        "HTTP 422: Invalid character '-'\n"
-                       "→ retry 3/3 → 修正 query 語法")
+                       "→ retry 3/3 → 修正語法")
 
-    code_block(slide, R, BODY_TOP + Inches(1.9), HW, Inches(3.35), challenges_code,
+    code_block(slide, R, BODY_TOP + Inches(1.72), HW, Inches(3.8), challenges_code,
                "開發過程遇到的挑戰", label_color=DANGER)
 
 
@@ -679,8 +676,8 @@ def main():
     s06_api(prs)
     s07_allowed_commands(prs)
     s08_mcp(prs)
-    s09_case_env(prs)
     s10_case_censys(prs)
+    s09_case_env(prs)
     s11_quickstart(prs)
     s12_summary(prs)
     prs.save("siee.pptx")

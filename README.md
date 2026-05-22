@@ -16,6 +16,16 @@ AI Agent                    SIEE Server
 
 The agent can write `os.environ['API_TOKEN']` in its code and the test will work — but the actual token value never appears in the agent's context window.
 
+### No more copy-pasting
+
+The traditional workflow requires you to manually copy secrets into your environment, paste test outputs back into the chat, and switch context between your terminal and the AI conversation. SIEE eliminates this entirely:
+
+- **No copying secrets**: the AI never needs to know the token value — it just writes code that reads from `os.environ`
+- **No pasting results**: the AI calls `get_log` to retrieve stdout/stderr directly, without you lifting a finger
+- **Fully automated loop**: deploy → exec → get_log is a tight feedback loop the AI drives end-to-end
+
+This is the key motivation behind SIEE: not just secret isolation, but enabling a fully automated development workflow where the AI can iterate on real API integration without human intervention between steps.
+
 ## Design Philosophy
 
 This follows the same philosophy as **GitHub Actions Secrets**:
@@ -50,7 +60,7 @@ SIEE does **not** prevent an AI agent from deliberately writing code to print se
 
 You are building a project that integrates with external APIs. You use an AI agent (e.g. Claude Code) to write and iterate on the code. The API tokens required for real integration tests should never appear in the conversation — but the tests still need to run against the real API.
 
-SIEE sits between the agent and the execution environment, holding the secrets and returning only results.
+SIEE sits between the agent and the execution environment, holding the secrets and returning only results. The agent can autonomously iterate — deploy a fix, run the tests, read the output, deploy another fix — without you needing to paste anything or intervene between steps.
 
 ## Quick Start
 
