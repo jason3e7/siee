@@ -498,50 +498,57 @@ def s08_mcp(prs):
 
 def s09_case_env(prs):
     slide = blank(prs)
-    heading(slide, "⚠  Secret 在 config.txt：真正的風險在哪")
+    heading(slide, "⚠  探針腳本的風險：白名單還不夠")
 
     txtbox(slide, ML, BODY_TOP, CW, Inches(0.32),
-           "實際開發的腳本讀 config.txt 取得 API key——AI 部署的探針也可以讀同一個檔。",
+           "白名單控制的是「執行什麼指令」，但控制不了「code 裡面做什麼」——debug 意圖也可能觸發洩漏。",
            size=Pt(14), color=WARN)
 
-    probe_code = ("# AI 部署的探針，目的只是 debug\n"
+    probe_code = ("# AI 探針：目的只是 debug\n"
                   "import os, sys\n"
                   "print('python:', sys.executable)\n\n"
-                  "# 但 config.txt 就在 workspace 外層：\n"
-                  "print(open('../config.txt').read())\n"
-                  "# api_bearer = sk-real-token-here\n"
-                  "# api_organization_id = abc123")
+                  "# 但相差只是一行：\n"
+                  "print(dict(os.environ))\n"
+                  "# CENSYS_API_KEY = sk-real-...\n"
+                  "# DATABASE_URL   = postgres://...\n\n"
+                  "# 或讀到機敏目錄與檔案：\n"
+                  "print(os.listdir('.'))\n"
+                  "print(open('../config.txt').read())")
 
-    code_block(slide, ML, BODY_TOP + Inches(0.42), HW, Inches(2.2), probe_code,
-               "config.txt 和 workspace 放在同一台機器", label_color=DANGER)
+    code_block(slide, ML, BODY_TOP + Inches(0.42), HW, Inches(3.5), probe_code,
+               "看起來無害，實際上可以洩漏所有 secret", label_color=DANGER)
 
-    cch = Inches(1.02); ccy = BODY_TOP + Inches(0.42)
+    cch = Inches(1.07); ccy = BODY_TOP + Inches(0.42)
     for title, bc, body in [
-        ("現況：subprocess 直接讀 config.txt", DANGER,
-         "censys_search.py 讀 ../config.txt\nAI 探針也可以寫同樣的 open()"),
-        ("OS 層限制？subprocess 也讀不到",    WARN,
-         "用 file permission 擋住探針\n但合法腳本也一起被擋"),
-        ("解法：SIEE 當 secret broker",       ACCENT,
-         "SIEE server 讀 config.txt（有權）\n以 env var 注入 subprocess\nsubprocess user 無 config 讀取權"),
+        ("白名單只控制指令，不控制行為", WARN,
+         "「run」= 執行 main.py\n但 main.py 裡可以寫任何東西"),
+        ("完整 env var 傳入子程序",     DANGER,
+         "os.environ.copy() 把全部 env\n傳給 subprocess，AI 探針可讀取"),
+        ("Debug ≠ 惡意，效果相同",      BLUE,
+         "AI 只是在 debug 環境\n但洩漏的後果和主動竊取相同"),
     ]:
         card(slide, R, ccy, HW, cch, title=title, body=body,
              border=bc, title_color=bc, body_size=Pt(13))
-        ccy += cch + Inches(0.08)
+        ccy += cch + Inches(0.09)
 
-    new_cmd_code = ("# server.py — ALLOWED_COMMANDS 新格式（已實作）\n"
-                    "ALLOWED_COMMANDS = {\n"
-                    "    \"run\": {\n"
-                    "        \"cmd\": [sys.executable, \"main.py\"],\n"
-                    "        \"env\": [\"CENSYS_API_KEY\"],  # 只傳必要的\n"
-                    "    },\n"
-                    "    \"pytest\": {\n"
-                    "        \"cmd\": [sys.executable, \"-m\", \"pytest\"],\n"
-                    "        \"env\": [],  # 不需要 secret\n"
-                    "    },\n"
-                    "}")
+    txtbox(slide, ML, BODY_TOP + Inches(4.08), CW, Inches(0.3),
+           "改善方向：",
+           size=Pt(14), color=WHITE, bold=True)
 
-    code_block(slide, ML, BODY_TOP + Inches(2.82), CW, Inches(2.8), new_cmd_code,
-               "subprocess 只拿到 env 指定的 key，讀不到 config.txt", label_color=ACCENT)
+    cw3 = Inches(3.93); cgap = Inches(0.12)
+    cy3 = BODY_TOP + Inches(4.48)
+    cx = ML
+    for title, bc, body in [
+        ("SIEE 當 secret broker",  ACCENT,
+         "SIEE server 讀 config.txt\n以 env var 注入 subprocess\nsubprocess 本身讀不到 config"),
+        ("per-command env 白名單",  BLUE,
+         "ALLOWED_COMMANDS 指定\n每個指令能拿哪些 env key\n已實作於 server.py"),
+        ("OS 層 file permission",  PURPLE,
+         "subprocess user 無讀取權\n即使 code 寫 open() 也被擋\n需搭配 broker 模式才不衝突"),
+    ]:
+        card(slide, cx, cy3, cw3, Inches(1.1),
+             title=title, body=body, border=bc, title_color=bc, body_size=Pt(13))
+        cx += cw3 + cgap
 
 
 def s10_case_censys(prs):
