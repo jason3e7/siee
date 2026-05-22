@@ -39,8 +39,36 @@ ALLOWED_COMMANDS = {
 }
 
 
+# Load secret.txt at startup — injects keys into os.environ and populates
+# SECRET_ENV_KEYS for log masking automatically.
+# Format: one "key=value" per line, # for comments.
+def _load_secrets(path: str) -> dict[str, str]:
+    if not os.path.exists(path):
+        return {}
+    secrets: dict[str, str] = {}
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            key, _, value = line.partition("=")
+            secrets[key.strip()] = value.strip()
+    return secrets
+
+
+_secrets_path = os.environ.get(
+    "SIEE_SECRETS",
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "secret.txt"),
+)
+_secrets = _load_secrets(_secrets_path)
+for _k, _v in _secrets.items():
+    os.environ.setdefault(_k, _v)   # existing env var takes precedence
+if _secrets:
+    log.info("secrets loaded: keys=%s", list(_secrets.keys()))
+
 # Env var names whose values will be replaced with *** in log output.
-SECRET_ENV_KEYS: list[str] = []
+# Auto-populated from secret.txt; can be extended manually.
+SECRET_ENV_KEYS: list[str] = list(_secrets.keys())
 
 # Patterns in deployed .py files that cause exec to be rejected.
 SCAN_PATTERNS = [
