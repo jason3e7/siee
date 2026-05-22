@@ -492,7 +492,110 @@ def s08_mcp(prs):
          border=BLUE, title_color=BLUE, body_size=Pt(13.5))
 
 
-def s09_quickstart(prs):
+def s09_case_env(prs):
+    slide = blank(prs)
+    heading(slide, "實戰案例：AI 探查 SIEE 環境")
+
+    txtbox(slide, ML, BODY_TOP, CW, Inches(0.32),
+           "AI 遇到 ModuleNotFoundError 後，部署探針腳本自行偵測執行環境，直到找出問題根因。",
+           size=Pt(14), color=MUTED)
+
+    probe_code = ("# AI 部署的環境探針\n"
+                  "import sys, subprocess\n"
+                  "print('python:', sys.executable)\n"
+                  "print('version:', sys.version)\n"
+                  "r = subprocess.run(\n"
+                  "    [sys.executable, '-m', 'pip', 'list'],\n"
+                  "    capture_output=True, text=True)\n"
+                  "print(r.stdout)\n"
+                  "try:\n"
+                  "    import requests\n"
+                  "    print('requests OK:', requests.__version__)\n"
+                  "except ImportError as e:\n"
+                  "    print('requests FAIL:', e)\n"
+                  "    print('sys.path:', sys.path)")
+
+    code_block(slide, ML, BODY_TOP + Inches(0.42), HW, Inches(3.3), probe_code,
+               "AI 部署的探針腳本", label_color=BLUE)
+
+    stdout_code = ("# Probe 1：系統套件，無 requests\n"
+                   "python: /home/user/siee/venv/bin/python\n"
+                   "version: 3.12.3 [GCC 13.3.0]\n"
+                   "... (列出 80+ 系統套件)\n"
+                   "requests  ← 不在列表！\n\n"
+                   "# Probe 2：路徑確認\n"
+                   "requests FAIL: No module named 'requests'\n"
+                   "sys.path: [...,\n"
+                   "  '/home/user/siee/venv/lib/\n"
+                   "   python3.12/site-packages']\n\n"
+                   "# Probe 3：修復後確認\n"
+                   "python: /home/user/siee/venv/bin/python\n"
+                   "requests OK: 2.34.2")
+
+    code_block(slide, R, BODY_TOP + Inches(0.42), HW, Inches(3.3), stdout_code,
+               "SIEE 回傳的 stdout（AI 看到的）", label_color=ACCENT)
+
+    cw = Inches(3.75); cy = BODY_TOP + Inches(3.95)
+    cx = ML
+    for title, bc, body in [
+        ("5 次 ModuleNotFoundError", DANGER,
+         "AI 不斷重試 import requests\n才意識到環境有異"),
+        ("部署探針自我偵測",          WARN,
+         "AI 寫探針 code，透過 SIEE\n取得 python 路徑與套件清單"),
+        ("venv 缺少套件 → 修復",     ACCENT,
+         "發現 venv 未安裝 requests\n修復後 requests OK: 2.34.2"),
+    ]:
+        card(slide, cx, cy, cw, Inches(1.3),
+             title=title, body=body, border=bc, title_color=bc, body_size=Pt(13))
+        cx += cw + Inches(0.14)
+
+
+def s10_case_censys(prs):
+    slide = blank(prs)
+    heading(slide, "實戰案例：Censys API v3 整合開發")
+
+    txtbox(slide, ML, BODY_TOP, CW, Inches(0.32),
+           "AI 透過 SIEE 開發 Censys /v3/global/search/query 整合，API key 全程不出現在 context。",
+           size=Pt(14), color=MUTED)
+
+    cw4 = Inches(2.85); cy4 = BODY_TOP + Inches(0.42)
+    cx4 = ML
+    for num, lbl in [("594", "Total Hits"), ("6", "分頁數"), ("2", "資料型態"), ("3", "Retry 次數")]:
+        stat_box(slide, cx4, cy4, cw4, Inches(1.3), num, lbl)
+        cx4 += cw4 + Inches(0.17)
+
+    query_code = ("# IP 查詢（geolocation + ASN）\n"
+                  "host.ip=\"8.8.8.8\" or\n"
+                  "host.ip=\"8.8.4.4\" or\n"
+                  "host.ip=\"1.1.1.1\"\n"
+                  "→ 3 hits：Google DNS 地理位置、ASN\n\n"
+                  "# 憑證搜尋（webproperty）\n"
+                  "webproperty.ip=\"93.184.216.34\"\n"
+                  "→ 594 hits / 6 pages\n"
+                  "→ next_page_token 分頁\n"
+                  "→ Resuming session 斷點續傳\n\n"
+                  "# 結果存成 timestamped JSON\n"
+                  "20260522t021403_result.json")
+
+    code_block(slide, ML, BODY_TOP + Inches(1.9), HW, Inches(3.35), query_code,
+               "實際查詢語法與結果", label_color=ACCENT)
+
+    challenges_code = ("# 挑戰 1：ModuleNotFoundError\n"
+                       "import requests  # FAIL × 5\n"
+                       "→ 環境探查後修復\n\n"
+                       "# 挑戰 2：跨 deploy 檔案消失\n"
+                       "FileNotFoundError: result.json\n"
+                       "→ deploy 會清空 workspace\n"
+                       "→ 改為當次執行內讀取\n\n"
+                       "# 挑戰 3：查詢語法錯誤\n"
+                       "HTTP 422: Invalid character '-'\n"
+                       "→ retry 3/3 → 修正 query 語法")
+
+    code_block(slide, R, BODY_TOP + Inches(1.9), HW, Inches(3.35), challenges_code,
+               "開發過程遇到的挑戰", label_color=DANGER)
+
+
+def s11_quickstart(prs):
     slide = blank(prs)
     heading(slide, "Quick Start")
 
@@ -526,7 +629,7 @@ def s09_quickstart(prs):
                "使用方式", label_color=BLUE)
 
 
-def s10_summary(prs):
+def s12_summary(prs):
     slide = blank(prs)
     heading(slide, "總結")
 
@@ -576,8 +679,10 @@ def main():
     s06_api(prs)
     s07_allowed_commands(prs)
     s08_mcp(prs)
-    s09_quickstart(prs)
-    s10_summary(prs)
+    s09_case_env(prs)
+    s10_case_censys(prs)
+    s11_quickstart(prs)
+    s12_summary(prs)
     prs.save("siee.pptx")
     print(f"Saved siee.pptx  ({len(prs.slides)} slides)")
 
