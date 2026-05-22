@@ -17,10 +17,23 @@ logging.basicConfig(
 )
 log = logging.getLogger("siee")
 
-# Server owner configures allowed commands here
+# Server owner configures allowed commands here.
+# "env": list of env var names to pass to subprocess.
+#   []   → only basic vars (PATH, HOME, LANG) — no secrets
+#   None → pass all os.environ (legacy / unrestricted)
 ALLOWED_COMMANDS = {
-    "pytest": [sys.executable, "-m", "pytest"],
-    "run":    [sys.executable, "main.py"],
+    "pytest": {
+        "cmd": [sys.executable, "-m", "pytest"],
+        "env": [],
+    },
+    "run": {
+        "cmd": [sys.executable, "main.py"],
+        "env": None,
+    },
+    "python3": {
+        "cmd": [sys.executable, "main.py"],
+        "env": None,
+    },
 }
 
 
@@ -34,9 +47,15 @@ def create_app(workspace: str = None, logs_dir: str = None) -> Flask:
     os.makedirs(app.config["WORKSPACE"], exist_ok=True)
     os.makedirs(app.config["LOGS_DIR"],  exist_ok=True)
 
-    def _run_job(exec_id: str, cmd: list, cwd: str, logs_dir: str, jobs: dict):
+    def _run_job(exec_id: str, cmd: list, cwd: str, logs_dir: str, jobs: dict, env_keys=None):
         log_path = os.path.join(logs_dir, f"{exec_id}.log")
         ts = lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        if env_keys is None:
+            env = os.environ.copy()
+        else:
+            _base = {k: os.environ[k] for k in ("PATH", "HOME", "LANG", "LC_ALL") if k in os.environ}
+            env = {**_base, **{k: os.environ[k] for k in env_keys if k in os.environ}}
 
         with open(log_path, "w") as f:
             f.write(f"[{ts()}] STATUS: RUNNING\n")
@@ -45,7 +64,7 @@ def create_app(workspace: str = None, logs_dir: str = None) -> Flask:
                 result = subprocess.run(
                     cmd,
                     cwd=cwd,
-                    env=os.environ.copy(),
+                    env=env,
                     capture_output=True,
                     text=True,
                     timeout=300,
@@ -103,7 +122,9 @@ def create_app(workspace: str = None, logs_dir: str = None) -> Flask:
                 "available": list(ALLOWED_COMMANDS.keys()),
             }), 400
 
-        cmd = ALLOWED_COMMANDS[command] + [str(a) for a in args]
+        command_def = ALLOWED_COMMANDS[command]
+        cmd = command_def["cmd"] + [str(a) for a in args]
+        env_keys = command_def.get("env")
         exec_id = str(uuid.uuid4())
         jobs = app.config["JOBS"]
         jobs[exec_id] = "RUNNING"
@@ -112,6 +133,7 @@ def create_app(workspace: str = None, logs_dir: str = None) -> Flask:
         threading.Thread(
             target=_run_job,
             args=(exec_id, cmd, app.config["WORKSPACE"], app.config["LOGS_DIR"], jobs),
+            kwargs={"env_keys": env_keys},
             daemon=True,
         ).start()
 
