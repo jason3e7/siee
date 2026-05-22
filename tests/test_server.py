@@ -4,6 +4,7 @@ import time
 
 import pytest
 
+import server
 from server import create_app
 
 
@@ -154,3 +155,45 @@ class TestIntegration:
         result = _wait(client, exec_id)
         assert "out" in result["log"]
         assert "err" in result["log"]
+
+
+# ── scan ──────────────────────────────────────────────────────────────────────
+
+class TestScan:
+    def test_environ_print_rejected(self, client):
+        _deploy(client, "main.py", b"import os\nprint(os.environ)\n")
+        r = client.post("/exec", json={"command": "run"})
+        assert r.status_code == 400
+        body = r.get_json()
+        assert "scan rejected" in body["error"]
+        assert len(body["violations"]) > 0
+
+    def test_getenv_print_rejected(self, client):
+        _deploy(client, "main.py", b"import os\nprint(os.getenv('KEY'))\n")
+        r = client.post("/exec", json={"command": "run"})
+        assert r.status_code == 400
+
+    def test_legitimate_environ_access_allowed(self, client):
+        code = b"import os\nval = os.environ.get('HOME', '')\nprint('home:', val)\n"
+        _deploy(client, "main.py", code)
+        r = client.post("/exec", json={"command": "run"})
+        assert r.status_code == 200
+
+
+# ── log masking ───────────────────────────────────────────────────────────────
+
+class TestLogMasking:
+    def test_secret_masked_in_log(self, client, monkeypatch):
+        monkeypatch.setenv("_SIEE_TEST_SECRET", "supersecret_xyz_123")
+        server.SECRET_ENV_KEYS.append("_SIEE_TEST_SECRET")
+        try:
+            # val is read from env then printed — passes scan, but value must be masked
+            code = b"import os\nval = os.environ.get('_SIEE_TEST_SECRET', '')\nprint('got:', val)\n"
+            _deploy(client, "main.py", code)
+            exec_id = client.post("/exec", json={"command": "run"}).get_json()["exec_id"]
+            result = _wait(client, exec_id)
+            assert result["status"] == "DONE"
+            assert "supersecret_xyz_123" not in result["log"]
+            assert "***" in result["log"]
+        finally:
+            server.SECRET_ENV_KEYS.remove("_SIEE_TEST_SECRET")

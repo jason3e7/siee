@@ -1,5 +1,7 @@
 import os
+import re
 import sys
+import glob
 import uuid
 import shutil
 import subprocess
@@ -35,6 +37,39 @@ ALLOWED_COMMANDS = {
         "env": None,
     },
 }
+
+
+# Env var names whose values will be replaced with *** in log output.
+SECRET_ENV_KEYS: list[str] = []
+
+# Patterns in deployed .py files that cause exec to be rejected.
+SCAN_PATTERNS = [
+    r"print\s*\(.*os\.environ",
+    r"print\s*\(.*os\.getenv",
+]
+
+
+def _mask_secrets(content: str) -> str:
+    for key in SECRET_ENV_KEYS:
+        value = os.environ.get(key, "")
+        if value:
+            content = content.replace(value, "***")
+    return content
+
+
+def _scan_workspace(workspace: str) -> list[str]:
+    violations = []
+    for path in glob.glob(os.path.join(workspace, "**", "*.py"), recursive=True):
+        try:
+            with open(path, encoding="utf-8", errors="ignore") as f:
+                for lineno, line in enumerate(f, 1):
+                    for pat in SCAN_PATTERNS:
+                        if re.search(pat, line):
+                            rel = os.path.relpath(path, workspace)
+                            violations.append(f"{rel}:{lineno}: {line.rstrip()}")
+        except OSError:
+            pass
+    return violations
 
 
 def create_app(workspace: str = None, logs_dir: str = None) -> Flask:
@@ -122,6 +157,11 @@ def create_app(workspace: str = None, logs_dir: str = None) -> Flask:
                 "available": list(ALLOWED_COMMANDS.keys()),
             }), 400
 
+        violations = _scan_workspace(app.config["WORKSPACE"])
+        if violations:
+            log.warning("exec: scan rejected: %s", violations)
+            return jsonify({"error": "scan rejected", "violations": violations}), 400
+
         command_def = ALLOWED_COMMANDS[command]
         cmd = command_def["cmd"] + [str(a) for a in args]
         env_keys = command_def.get("env")
@@ -150,7 +190,7 @@ def create_app(workspace: str = None, logs_dir: str = None) -> Flask:
         content = ""
         if os.path.exists(log_path):
             with open(log_path) as f:
-                content = f.read()
+                content = _mask_secrets(f.read())
 
         status = jobs[exec_id]
         log.debug("get_logs: exec_id=%s status=%s", exec_id, status)
