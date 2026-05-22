@@ -536,17 +536,17 @@ def s09_case_env(prs):
            size=Pt(14), color=WHITE, bold=True)
 
     cw3 = Inches(3.93); cgap = Inches(0.12)
-    cy3 = BODY_TOP + Inches(4.48)
+    cy3 = BODY_TOP + Inches(4.45)
     cx = ML
     for title, bc, body in [
         ("SIEE 當 secret broker",  ACCENT,
          "SIEE server 讀 config.txt\n以 env var 注入 subprocess\nsubprocess 本身讀不到 config"),
-        ("per-command env 白名單",  BLUE,
-         "ALLOWED_COMMANDS 指定\n每個指令能拿哪些 env key\n已實作於 server.py"),
+        ("exec 前掃描 .py 內容",    BLUE,
+         "偵測 print.*os\\.environ 等\n非功能性環境存取 pattern\n命中則拒絕，不執行"),
         ("OS 層 file permission",  PURPLE,
          "subprocess user 無讀取權\n即使 code 寫 open() 也被擋\n需搭配 broker 模式才不衝突"),
     ]:
-        card(slide, cx, cy3, cw3, Inches(1.1),
+        card(slide, cx, cy3, cw3, Inches(1.2),
              title=title, body=body, border=bc, title_color=bc, body_size=Pt(13))
         cx += cw3 + cgap
 
