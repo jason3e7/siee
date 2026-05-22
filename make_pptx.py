@@ -425,14 +425,17 @@ def s07_allowed_commands(prs):
 
     code = ("# server.py 頂端，server owner 自行設定\n"
             "ALLOWED_COMMANDS = {\n"
-            "    \"pytest\": [sys.executable, \"-m\", \"pytest\"],\n"
-            "    \"run\":    [sys.executable, \"main.py\"],\n"
+            "    \"pytest\": {\n"
+            "        \"cmd\": [sys.executable, \"-m\", \"pytest\"],\n"
+            "        \"env\": [],      # 只傳 PATH/HOME/LANG，不帶 secret\n"
+            "    },\n"
+            "    \"run\": {\n"
+            "        \"cmd\": [sys.executable, \"main.py\"],\n"
+            "        \"env\": None,   # 傳所有 env var（含 secret.txt 注入）\n"
+            "    },\n"
             "}\n\n"
-            "# 呼叫方式\n"
-            "POST /exec\n"
-            "{\"command\": \"pytest\", \"args\": [\"-v\", \"tests/\"]}\n\n"
             "# 不在白名單 → 400 Bad Request\n"
-            "{\"command\": \"rm\", \"args\": [\"-rf\", \"/\"]}\n"
+            "{\"command\": \"rm\"}\n"
             "→ {\"error\": \"command not allowed\", \"available\": [\"pytest\", \"run\"]}")
 
     code_block(slide, ML, BODY_TOP + Inches(0.4), CW, Inches(3.9), code)
@@ -620,8 +623,9 @@ def s11_quickstart(prs):
              "python3 -m venv venv\n"
              "source venv/bin/activate\n"
              "pip install -r requirements.txt\n\n"
-             "# 3. 設定 secret（server 端）\n"
-             "export MY_API_KEY=\"sk-real-token-here\"\n\n"
+             "# 3. 設定 secret — 建立 secret.txt\n"
+             "MY_API_KEY=sk-real-token-here\n"
+             "DATABASE_URL=postgres://...\n\n"
              "# 4. 啟動\n"
              "python server.py      # port 5000\n"
              "python mcp_server.py  # port 5001")
@@ -667,18 +671,17 @@ def s12_summary(prs):
         cx += cw + Inches(0.14)
 
     cy2 = cy + ch + Inches(0.2)
+    cw2 = (CW - Inches(0.14)) / 2
     cx = ML
     for title, bc, body in [
         ("MCP 原生支援",   WARN,
          "SSE transport\nClaude Code 直接接入\nAI agent 機器零額外安裝"),
-        ("本機自架",       ACCENT,
-         "資料不出內網\n完全掌控執行環境\n不依賴雲端服務"),
-        ("23 個測試",      BLUE,
+        ("27 個測試",      BLUE,
          "unit + integration 全覆蓋\n兩隻 server 獨立測試\n可信賴的 CI 基礎"),
     ]:
-        card(slide, cx, cy2, cw, ch, title=title, body=body,
+        card(slide, cx, cy2, cw2, ch, title=title, body=body,
              border=bc, title_color=bc, body_size=Pt(13.5))
-        cx += cw + Inches(0.14)
+        cx += cw2 + Inches(0.14)
 
 
 # ══════════════════════════════════════════════════════════════════════════════

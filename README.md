@@ -78,29 +78,34 @@ pip install -r requirements.txt
 
 ### 2. Set your secrets
 
-Secrets are just environment variables on the SIEE machine. Set them before starting the server:
+Create a `secret.txt` file in the project root (already in `.gitignore`):
 
-```bash
-export MY_API_KEY="sk-real-token-here"
-export DATABASE_URL="postgres://..."
+```
+# secret.txt
+MY_API_KEY=sk-real-token-here
+DATABASE_URL=postgres://...
 ```
 
-Or put them in a `.env` file and load it:
-
-```bash
-export $(cat .env | xargs)
-```
+SIEE loads this on startup, injects each key as an environment variable for subprocess use, and registers the keys for automatic log masking — no manual `export` needed.
 
 ### 3. Configure allowed commands
 
-Edit `ALLOWED_COMMANDS` at the top of `server.py` to control what the AI agent is permitted to run:
+Edit `ALLOWED_COMMANDS` at the top of `server.py`. Each entry specifies the command and which environment variables the subprocess can see:
 
 ```python
 ALLOWED_COMMANDS = {
-    "pytest": [sys.executable, "-m", "pytest"],
-    "run":    [sys.executable, "main.py"],
+    "pytest": {
+        "cmd": [sys.executable, "-m", "pytest"],
+        "env": [],      # no secrets — only PATH, HOME, LANG
+    },
+    "run": {
+        "cmd": [sys.executable, "main.py"],
+        "env": None,    # pass all env vars (including secrets from secret.txt)
+    },
 }
 ```
+
+`env: []` restricts the subprocess to safe system vars only. `env: None` passes everything.
 
 ### 4. Start the servers
 
