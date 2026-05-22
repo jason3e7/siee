@@ -232,7 +232,7 @@ def s01_cover(prs):
     START = Inches((7.5 - 4.6) / 2)
 
     txtbox(slide, ML, START, CW, Inches(0.32),
-           "Open Source  ·  Python  ·  Flask  ·  MCP  ·  github.com/jason3e7/siee",
+           "Open Source  ·  Python  ·  Flask  ·  MCP",
            size=Pt(13.5), color=MUTED, align=PP_ALIGN.CENTER)
 
     txtbox(slide, ML, START + Inches(0.38), CW, Inches(1.05),
