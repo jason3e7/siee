@@ -1,6 +1,6 @@
 # SIEE — Secret Isolation Execution Environment
 
-> **No more copy-pasting. AI agents deploy, run, and iterate autonomously — without ever seeing your secrets.**
+> **No more copy-pasting — AI agents iterate autonomously, without ever seeing your secrets.**
 
 A lightweight local server that lets AI agents deploy and execute code against real API secrets — without ever exposing those secrets to the agent.
 
