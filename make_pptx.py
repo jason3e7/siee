@@ -539,12 +539,12 @@ def s09_case_env(prs):
     cy3 = BODY_TOP + Inches(4.45)
     cx = ML
     for title, bc, body in [
-        ("SIEE 當 secret broker",  ACCENT,
-         "SIEE server 讀 config.txt\n以 env var 注入 subprocess\nsubprocess 本身讀不到 config"),
+        ("Broker + OS 雙層防護",   ACCENT,
+         "SIEE 讀 config → env var 注入\nsubprocess 以低權限 user 執行\nOS 擋住 open('../config.txt')"),
         ("exec 前掃描 .py 內容",    BLUE,
          "偵測 print.*os\\.environ 等\n非功能性環境存取 pattern\n命中則拒絕，不執行"),
-        ("OS 層 file permission",  PURPLE,
-         "subprocess user 無讀取權\n即使 code 寫 open() 也被擋\n需搭配 broker 模式才不衝突"),
+        ("Log 遮罩",               PURPLE,
+         "回傳前比對 secret 值\n命中替換為 ***\n即使 print 出來也看不到"),
     ]:
         card(slide, cx, cy3, cw3, Inches(1.2),
              title=title, body=body, border=bc, title_color=bc, body_size=Pt(13))
