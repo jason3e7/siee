@@ -552,44 +552,60 @@ def s09_case_env(prs):
 
 def s10_case_censys(prs):
     slide = blank(prs)
-    heading(slide, "實戰案例：Censys API v3 整合開發")
+    heading(slide, "實戰：Censys API — AI 自主迭代 6 輪")
 
     txtbox(slide, ML, BODY_TOP, CW, Inches(0.32),
-           "AI 透過 SIEE 開發 Censys /v3/global/search/query 整合，API key 全程不出現在 context。",
+           "AI 透過 SIEE 的 deploy → exec → get_log 迴圈自主迭代，產出具備 pagination、retry、session 的腳本。",
            size=Pt(14), color=MUTED)
 
-    cw4 = Inches(2.85); cy4 = BODY_TOP + Inches(0.42)
-    cx4 = ML
-    for num, lbl in [("594", "Total Hits"), ("6", "分頁數"), ("2", "資料型態"), ("3", "Retry 次數")]:
-        stat_box(slide, cx4, cy4, cw4, Inches(1.15), num, lbl)
-        cx4 += cw4 + Inches(0.17)
+    flow_items = [
+        ("deploy",    True,  ACCENT), ("→", False, MUTED),
+        ("exec",      True,  ACCENT), ("→", False, MUTED),
+        ("get_log",   True,  ACCENT), ("→", False, MUTED),
+        ("↺ iterate", False, MUTED),
+    ]
+    flow_row(slide, flow_items, ML, BODY_TOP + Inches(0.45))
 
-    query_code = ("# IP 查詢（geolocation + ASN）\n"
-                  "host.ip=\"8.8.8.8\" or\n"
-                  "host.ip=\"8.8.4.4\" or host.ip=\"1.1.1.1\"\n"
-                  "→ 3 hits：Google DNS、位置、ASN\n\n"
-                  "# 憑證搜尋（webproperty）\n"
-                  "webproperty.ip=\"93.184.216.34\"\n"
-                  "→ 594 hits / 6 pages\n"
-                  "→ next_page_token 分頁\n"
-                  "→ Resuming session 斷點續傳\n"
-                  "20260522t021403_result.json")
+    cw3 = Inches(3.93); ch = Inches(1.28); cgap = Inches(0.12)
 
-    code_block(slide, ML, BODY_TOP + Inches(1.72), HW, Inches(3.8), query_code,
-               "實際查詢語法與結果", label_color=ACCENT)
+    cy1 = BODY_TOP + Inches(1.1)
+    cx = ML
+    for title, bc, body in [
+        ("❶  ModuleNotFoundError × 5", DANGER,
+         "import requests 失敗\n反覆嘗試 5 次才察覺環境異常"),
+        ("❷  環境探針部署",             WARN,
+         "AI 寫探針腳本\npip list → 發現 venv 缺套件"),
+        ("❸  基本搜尋 100 hits ✓",      ACCENT,
+         "修復後首次成功\nAPI key 透過 env var 注入有效"),
+    ]:
+        card(slide, cx, cy1, cw3, ch, title=title, body=body,
+             border=bc, title_color=bc, body_size=Pt(13))
+        cx += cw3 + cgap
 
-    challenges_code = ("# 挑戰 1：ModuleNotFoundError\n"
-                       "import requests  # FAIL × 5\n"
-                       "→ 探查環境後修復\n\n"
-                       "# 挑戰 2：跨 deploy 檔案消失\n"
-                       "FileNotFoundError: result.json\n"
-                       "→ deploy 清空 workspace\n\n"
-                       "# 挑戰 3：查詢語法錯誤\n"
-                       "HTTP 422: Invalid character '-'\n"
-                       "→ retry 3/3 → 修正語法")
+    cy2 = cy1 + ch + Inches(0.14)
+    cx = ML
+    for title, bc, body in [
+        ("❹  Pagination 594 hits ✓",  BLUE,
+         "next_page_token 分頁迴圈\n6 頁結果累積合併"),
+        ("❺  Session 斷點續傳 ✓",      PURPLE,
+         "save_state() + --resume\nResuming session 從斷點繼續"),
+        ("❻  IP Bulk 模式 ✓",          ACCENT,
+         "ips.txt → build_ip_query()\nLoaded 3 IPs → 3 hits"),
+    ]:
+        card(slide, cx, cy2, cw3, ch, title=title, body=body,
+             border=bc, title_color=bc, body_size=Pt(13))
+        cx += cw3 + cgap
 
-    code_block(slide, R, BODY_TOP + Inches(1.72), HW, Inches(3.8), challenges_code,
-               "開發過程遇到的挑戰", label_color=DANGER)
+    cy3 = cy2 + ch + Inches(0.18)
+    card(slide, ML, cy3, HW, Inches(1.6),
+         title="censys_search.py",
+         body="通用查詢腳本，支援任意 Censys query 語法\n分頁 · retry 3 次 · session 狀態存檔\n用法：censys_search.py <query>\n       censys_search.py --resume <session_id>",
+         border=ACCENT, title_color=ACCENT, body_size=Pt(13))
+
+    card(slide, R, cy3, HW, Inches(1.6),
+         title="censys_ip_bulk.py",
+         body="IP 列表批次查詢，從 ips.txt 自動組 query\n分頁 · retry · session，同 censys_search\n用法：censys_ip_bulk.py <ips.txt>\n       censys_ip_bulk.py --resume <session_id>",
+         border=BLUE, title_color=BLUE, body_size=Pt(13))
 
 
 def s11_quickstart(prs):
