@@ -244,8 +244,8 @@ def s01_cover(prs):
            size=Pt(24), color=WHITE, align=PP_ALIGN.CENTER)
 
     txtbox(slide, ML, START + Inches(2.08), CW, Inches(0.45),
-           "讓 AI agent 可以執行真實 API 測試，但永遠摸不到 secret 的值。",
-           size=Pt(14.5), color=MUTED, align=PP_ALIGN.CENTER)
+           "不用貼來貼。AI 自主迭代開發。Secret 永遠不進 context。",
+           size=Pt(14.5), color=ACCENT, align=PP_ALIGN.CENTER)
 
     sw = Inches(2.75); sh = Inches(1.6)
     sx = ML + Inches(0.26)
