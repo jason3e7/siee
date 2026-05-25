@@ -67,7 +67,7 @@ chmod -R o+rX "$SIEE_DIR/venv"
 # 6. sudoers: allow server user to run python as siee-worker without password
 echo "[5/6] Configuring sudoers..."
 SUDOERS_FILE="/etc/sudoers.d/siee"
-SUDOERS_LINE="$CURRENT_USER ALL=($WORKER_USER) NOPASSWD: $PYTHON"
+SUDOERS_LINE="$CURRENT_USER ALL=($WORKER_USER) NOPASSWD: SETENV: $PYTHON"
 echo "$SUDOERS_LINE" | sudo tee "$SUDOERS_FILE" > /dev/null
 sudo chmod 440 "$SUDOERS_FILE"
 echo "  -> $SUDOERS_LINE"

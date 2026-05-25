@@ -126,7 +126,7 @@ def create_app(workspace: str = None, logs_dir: str = None) -> Flask:
             env = {**_base, **{k: os.environ[k] for k in env_keys if k in os.environ}}
 
         if WORKER_USER:
-            cmd = ["sudo", "-u", WORKER_USER] + cmd
+            cmd = ["sudo", "-E", "-u", WORKER_USER] + cmd
 
         with open(log_path, "w") as f:
             f.write(f"[{ts()}] STATUS: RUNNING\n")
