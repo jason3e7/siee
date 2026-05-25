@@ -6,6 +6,7 @@ WORKER_USER="siee-worker"
 SHARED_GROUP="siee-shared"
 CURRENT_USER="$(whoami)"
 PYTHON="$SIEE_DIR/venv/bin/python"
+GROUP_CHANGED=false
 
 echo "=== SIEE Worker Isolation Setup ==="
 echo "SIEE dir   : $SIEE_DIR"
@@ -36,9 +37,21 @@ else
     echo "[2/6] Creating shared group $SHARED_GROUP..."
     sudo groupadd "$SHARED_GROUP"
 fi
-sudo usermod -aG "$SHARED_GROUP" "$CURRENT_USER"
-sudo usermod -aG "$SHARED_GROUP" "$WORKER_USER"
-echo "  -> $CURRENT_USER and $WORKER_USER added to $SHARED_GROUP"
+
+# add users to group only if not already a member
+if id -nG "$CURRENT_USER" | tr ' ' '\n' | grep -qx "$SHARED_GROUP"; then
+    echo "  -> $CURRENT_USER already in $SHARED_GROUP"
+else
+    sudo usermod -aG "$SHARED_GROUP" "$CURRENT_USER"
+    echo "  -> $CURRENT_USER added to $SHARED_GROUP"
+    GROUP_CHANGED=true
+fi
+if id -nG "$WORKER_USER" | tr ' ' '\n' | grep -qx "$SHARED_GROUP"; then
+    echo "  -> $WORKER_USER already in $SHARED_GROUP"
+else
+    sudo usermod -aG "$SHARED_GROUP" "$WORKER_USER"
+    echo "  -> $WORKER_USER added to $SHARED_GROUP"
+fi
 
 # 4. workspace / logs: group=siee-shared, 770, no sticky bit
 #    siee-worker can write files; server user can rmtree (group write, no sticky bit)
@@ -67,10 +80,16 @@ chmod 600 "$SIEE_DIR/secret.txt"
 echo ""
 echo "=== Done ==="
 echo ""
-echo "NOTE: group membership takes effect on next login, or run:"
-echo "   newgrp $SHARED_GROUP"
-echo ""
+if [ "$GROUP_CHANGED" = true ]; then
+    echo "NOTE: group membership takes effect on next login, or run:"
+    echo "   newgrp $SHARED_GROUP"
+    echo ""
+fi
 echo "Next steps:"
 echo "  1. Edit secret.txt with your API keys"
-echo "  2. newgrp $SHARED_GROUP  (if not yet re-logged in)"
-echo "  3. python server.py"
+if [ "$GROUP_CHANGED" = true ]; then
+    echo "  2. newgrp $SHARED_GROUP  (or re-login)"
+    echo "  3. python server.py"
+else
+    echo "  2. python server.py"
+fi

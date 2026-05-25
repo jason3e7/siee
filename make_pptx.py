@@ -423,18 +423,18 @@ def s07_allowed_commands(prs):
            "AI 只能呼叫白名單內的指令，直接防止任意 shell 指令注入。",
            size=Pt(14), color=MUTED)
 
-    code = ("# configured at top of server.py by the server owner\n"
+    code = ("# server.py 頂端，server owner 自行設定\n"
             "ALLOWED_COMMANDS = {\n"
             "    \"pytest\": {\n"
             "        \"cmd\": [sys.executable, \"-m\", \"pytest\"],\n"
-            "        \"env\": [],      # PATH/HOME/LANG only — no secrets\n"
+            "        \"env\": [],      # 只傳 PATH/HOME/LANG，不帶 secret\n"
             "    },\n"
             "    \"run\": {\n"
             "        \"cmd\": [sys.executable, \"main.py\"],\n"
-            "        \"env\": None,   # pass all env vars (incl. secret.txt)\n"
+            "        \"env\": None,   # 傳所有 env var（含 secret.txt 注入）\n"
             "    },\n"
             "}\n\n"
-            "# not in whitelist → 400 Bad Request\n"
+            "# 不在白名單 → 400 Bad Request\n"
             "{\"command\": \"rm\"}\n"
             "→ {\"error\": \"command not allowed\", \"available\": [\"pytest\", \"run\"]}")
 
@@ -461,7 +461,7 @@ def s08_mcp(prs):
            "mcp_server.py 透過 SSE transport 暴露三個 MCP tools，AI agent 機器只需要加一段設定。",
            size=Pt(14), color=MUTED)
 
-    cfg = ("# ~/.claude/settings.json  or  .claude/settings.json\n"
+    cfg = ("# ~/.claude/settings.json  或  .claude/settings.json\n"
            "{\n"
            "  \"mcpServers\": {\n"
            "    \"siee\": {\n"
@@ -474,14 +474,14 @@ def s08_mcp(prs):
     code_block(slide, ML, BODY_TOP + Inches(0.42), HW, Inches(3.3), cfg,
                "AI Agent 機器設定", label_color=ACCENT)
 
-    tools_code = ("# MCP tools available to AI agent\n\n"
+    tools_code = ("# AI agent 可用的 MCP tools\n\n"
                   "deploy(files={\"main.py\": \"...\"})\n"
-                  "# → upload code to SIEE\n\n"
+                  "# → 上傳 code 到 SIEE\n\n"
                   "exec_command(command=\"pytest\",\n"
                   "             args=[\"-v\"])\n"
-                  "# → returns exec_id\n\n"
+                  "# → 回傳 exec_id\n\n"
                   "get_log(exec_id=\"...\")\n"
-                  "# → poll until DONE/ERROR")
+                  "# → 輪詢直到 DONE/ERROR")
 
     code_block(slide, R, BODY_TOP + Inches(0.42), HW, Inches(3.3), tools_code,
                "AI 使用方式", label_color=BLUE)
@@ -490,7 +490,7 @@ def s08_mcp(prs):
     cy = BODY_TOP + Inches(3.92)
     card(slide, ML, cy, cw, Inches(1.3),
          title="SIEE Server（這台機器）",
-         body="python server.py      # port 5000\npython mcp_server.py  # port 5001\nenv vars: SIEE_URL, MCP_PORT to override",
+         body="python server.py      # port 5000\npython mcp_server.py  # port 5001\n環境變數：SIEE_URL、MCP_PORT 可覆寫",
          border=ACCENT, title_color=ACCENT, body_size=Pt(13.5))
 
     card(slide, R, cy, cw, Inches(1.3),
@@ -507,14 +507,14 @@ def s09_case_env(prs):
            "白名單控制的是「執行什麼指令」，但控制不了「code 裡面做什麼」——debug 意圖也可能觸發洩漏。",
            size=Pt(14), color=WARN)
 
-    probe_code = ("# AI probe script — just for debug\n"
+    probe_code = ("# AI 探針：目的只是 debug\n"
                   "import os, sys\n"
                   "print('python:', sys.executable)\n\n"
-                  "# one more line and secrets are exposed:\n"
+                  "# 但相差只是一行：\n"
                   "print(dict(os.environ))\n"
                   "# CENSYS_API_KEY = sk-real-...\n"
                   "# DATABASE_URL   = postgres://...\n\n"
-                  "# or listing sensitive directories:\n"
+                  "# 或讀到機敏目錄與檔案：\n"
                   "print(os.listdir('.'))\n"
                   "print(open('../config.txt').read())")
 
@@ -619,27 +619,27 @@ def s11_quickstart(prs):
     setup = ("# 1. clone\n"
              "git clone https://github.com/jason3e7/siee\n"
              "cd siee\n\n"
-             "# 2. install dependencies\n"
+             "# 2. 安裝依賴\n"
              "python3 -m venv venv\n"
              "source venv/bin/activate\n"
              "pip install -r requirements.txt\n\n"
-             "# 3. configure secrets — create secret.txt\n"
+             "# 3. 設定 secret — 建立 secret.txt\n"
              "MY_API_KEY=sk-real-token-here\n"
              "DATABASE_URL=postgres://...\n\n"
-             "# 4. start servers\n"
+             "# 4. 啟動\n"
              "python server.py      # port 5000\n"
              "python mcp_server.py  # port 5001")
 
-    usage = ("# AI agent deploys and tests\n"
+    usage = ("# AI agent 部署並測試\n"
              "POST /deploy\n"
              "  files: {\"test_api.py\": \"...\"}\n\n"
              "POST /exec\n"
              "  {\"command\": \"pytest\",\n"
              "   \"args\": [\"-v\"]}\n\n"
              "GET /logs/{exec_id}\n"
-             "  # poll until status != RUNNING\n\n"
-             "# add new allowed commands:\n"
-             "# edit ALLOWED_COMMANDS in server.py")
+             "  # 輪詢直到 status != RUNNING\n\n"
+             "# 新增允許的指令\n"
+             "# 編輯 server.py ALLOWED_COMMANDS")
 
     code_block(slide, ML, BODY_TOP + Inches(0.1), HW, Inches(4.8), setup,
                "安裝與啟動", label_color=ACCENT)
