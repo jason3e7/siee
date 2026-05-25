@@ -19,6 +19,11 @@ logging.basicConfig(
 )
 log = logging.getLogger("siee")
 
+# Low-privilege user for subprocess isolation.
+# Run setup.sh first to configure the user and sudoers.
+# Set to None to run as the server user (no isolation).
+WORKER_USER = "siee-worker"
+
 # Server owner configures allowed commands here.
 # "env": list of env var names to pass to subprocess.
 #   []   → only basic vars (PATH, HOME, LANG) — no secrets
@@ -119,6 +124,9 @@ def create_app(workspace: str = None, logs_dir: str = None) -> Flask:
         else:
             _base = {k: os.environ[k] for k in ("PATH", "HOME", "LANG", "LC_ALL") if k in os.environ}
             env = {**_base, **{k: os.environ[k] for k in env_keys if k in os.environ}}
+
+        if WORKER_USER:
+            cmd = ["sudo", "-u", WORKER_USER] + cmd
 
         with open(log_path, "w") as f:
             f.write(f"[{ts()}] STATUS: RUNNING\n")

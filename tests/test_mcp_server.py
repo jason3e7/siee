@@ -5,6 +5,7 @@ from wsgiref.simple_server import make_server, WSGIRequestHandler
 import httpx
 import pytest
 
+import server
 from server import create_app
 from mcp_server import _deploy, _exec_command, _get_log
 
@@ -19,6 +20,8 @@ class _QuietHandler(WSGIRequestHandler):
 
 @pytest.fixture(scope="module")
 def siee_url(tmp_path_factory):
+    mp = pytest.MonkeyPatch()
+    mp.setattr(server, "WORKER_USER", None)
     tmp = tmp_path_factory.mktemp("siee")
     app = create_app(
         workspace=str(tmp / "workspace"),
@@ -31,6 +34,7 @@ def siee_url(tmp_path_factory):
     t.start()
     yield f"http://127.0.0.1:{port}"
     srv.shutdown()
+    mp.undo()
 
 
 def _wait(exec_id: str, siee_url: str, timeout: float = 10.0) -> dict:

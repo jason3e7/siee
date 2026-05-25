@@ -9,7 +9,8 @@ from server import create_app
 
 
 @pytest.fixture
-def app(tmp_path):
+def app(tmp_path, monkeypatch):
+    monkeypatch.setattr(server, "WORKER_USER", None)
     instance = create_app(
         workspace=str(tmp_path / "workspace"),
         logs_dir=str(tmp_path / "logs"),
