@@ -80,15 +80,22 @@ chmod 600 "$SIEE_DIR/secret.txt"
 echo ""
 echo "=== Done ==="
 echo ""
-if [ "$GROUP_CHANGED" = true ]; then
-    echo "NOTE: group membership takes effect on next login, or run:"
+
+# check if the current shell session already has the group active
+if ! id -nG | tr ' ' '\n' | grep -qx "$SHARED_GROUP"; then
+    echo "NOTE: '$SHARED_GROUP' is not active in this shell session."
+    echo "      Run the following before starting the server:"
+    echo ""
     echo "   newgrp $SHARED_GROUP"
+    echo ""
+    echo "  (newgrp opens a new shell with the group active."
+    echo "   Alternatively, log out and log back in.)"
     echo ""
 fi
 echo "Next steps:"
 echo "  1. Edit secret.txt with your API keys"
-if [ "$GROUP_CHANGED" = true ]; then
-    echo "  2. newgrp $SHARED_GROUP  (or re-login)"
+if ! id -nG | tr ' ' '\n' | grep -qx "$SHARED_GROUP"; then
+    echo "  2. newgrp $SHARED_GROUP"
     echo "  3. python server.py"
 else
     echo "  2. python server.py"
