@@ -58,6 +58,44 @@ By keeping secrets exclusively on the SIEE server, they are structurally absent 
 
 SIEE does **not** prevent an AI agent from deliberately writing code to print secret values. It is a trust boundary for passive isolation, not a sandbox against adversarial agents.
 
+## ⚠️ Security Warning
+
+**SIEE is not 100% secure.** There are known limitations you should understand before putting real credentials in `secret.txt`.
+
+### Environment variables have no path isolation
+
+Unlike files, environment variables have no filesystem-level access control. Any code running in the subprocess can call `os.environ` and read every injected value — including `api_bearer`. SIEE's exec-time scan and log masking add friction, but they are not airtight:
+
+- **Scan bypass**: the scan only catches `print(os.environ)` style patterns. A script can read the value into a variable and encode it (e.g. base64) before printing — the raw token never appears in the output, but the secret is effectively leaked.
+- **Log masking bypass**: masking replaces the literal secret value with `***`. If the value is encoded or split across lines, masking will not catch it.
+
+This means **if malicious or poorly written code runs inside SIEE, credentials can be exfiltrated**.
+
+### Recommended workflow
+
+**1. Verify with fake tokens first**
+
+Before putting real API keys in `secret.txt`, run the full loop with placeholder values. Confirm that:
+- Deploy, exec, and get_log work end-to-end
+- The code the AI writes reads from `os.environ` correctly
+- No unexpected output appears in logs
+
+Only swap in real tokens once the environment is confirmed working.
+
+**2. Supervise early iterations one loop at a time**
+
+During the first few development cycles, do not let the AI run autonomously. Manually review each deployed script before executing:
+
+```
+deploy → (review code) → exec → get_log → (review output) → repeat
+```
+
+Once the AI's code patterns are stable and you have confidence in what it is writing, you can allow it to iterate autonomously.
+
+**3. Use per-command env whitelists**
+
+In `ALLOWED_COMMANDS`, prefer `"env": ["KEY1", "KEY2"]` over `"env": None`. Only pass the specific keys each command actually needs — limit the blast radius if something goes wrong.
+
 ## Use Case
 
 You are building a project that integrates with external APIs. You use an AI agent (e.g. Claude Code) to write and iterate on the code. The API tokens required for real integration tests should never appear in the conversation — but the tests still need to run against the real API.
