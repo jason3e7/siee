@@ -128,6 +128,105 @@ stdout / stderr → log 檔 → /logs/{exec_id} API 回傳
 
 ---
 
+## 與 server.py 的對應關係
+
+### `WORKER_USER`
+
+```python
+# server.py
+WORKER_USER = "siee-worker"
+```
+
+對應 `setup.sh` 建立的 system user。設為 `None` 可停用隔離（測試用）。
+
+---
+
+### `secret.txt` 自動載入
+
+```python
+# server 啟動時執行
+_secrets = _load_secrets("secret.txt")
+for _k, _v in _secrets.items():
+    os.environ.setdefault(_k, _v)   # 已有的 env var 優先
+SECRET_ENV_KEYS = list(_secrets.keys())
+```
+
+server 啟動時讀 `secret.txt`，把每個 key 注入成自己的 env var。`SECRET_ENV_KEYS` 同步記錄所有 key，後面 log masking 會用到。
+
+---
+
+### `ALLOWED_COMMANDS` 的 `env` 控制
+
+```python
+ALLOWED_COMMANDS = {
+    "pytest": {
+        "cmd": [sys.executable, "-m", "pytest"],
+        "env": [],      # 只傳 PATH/HOME/LANG，不帶任何 secret
+    },
+    "run": {
+        "cmd": [sys.executable, "main.py"],
+        "env": None,    # 傳全部 env var（含 secret.txt 注入的 key）
+    },
+}
+```
+
+`env: []` — subprocess 只拿到基本系統變數，完全看不到 secret。適合不需要 API key 的指令（如 pytest）。
+
+`env: None` — 傳所有 env var，包含 `secret.txt` 注入的 key。適合需要呼叫真實 API 的指令。
+
+---
+
+### subprocess 的執行方式
+
+```python
+# _run_job 內部
+if env_keys is None:
+    env = os.environ.copy()          # 全部 env var
+else:
+    env = {PATH, HOME, LANG} + {指定的 key}
+
+if WORKER_USER:
+    cmd = ["sudo", "-E", "-u", WORKER_USER] + cmd
+    #              ↑
+    #   -E 讓 sudo 保留上面組好的 env，
+    #   才能傳進 siee-worker 的 process
+```
+
+`-E` 是關鍵：沒有它，`sudo` 會清掉 env，`os.environ.get('api_bearer')` 在 subprocess 裡會拿到空值。`setup.sh` 的 sudoers 加了 `SETENV` 才允許 `-E` 生效。
+
+---
+
+### log masking
+
+```python
+# GET /logs/{exec_id} 回傳前
+content = _mask_secrets(f.read())
+
+def _mask_secrets(content):
+    for key in SECRET_ENV_KEYS:
+        value = os.environ.get(key, "")
+        if value:
+            content = content.replace(value, "***")
+    return content
+```
+
+就算 subprocess 不小心把 secret 值印出來（例如 `print(api_key)`），回傳給 AI 之前會把已知的 secret 值替換成 `***`。`SECRET_ENV_KEYS` 是從 `secret.txt` 自動建立的，所以 `secret.txt` 裡有幾個 key，就會遮幾個。
+
+---
+
+### exec 前掃描
+
+```python
+SCAN_PATTERNS = [
+    r"print\s*\(.*os\.environ",
+    r"print\s*\(.*os\.getenv",
+]
+```
+
+`/exec` 執行前會掃描 `workspace/` 裡所有 `.py` 檔，比對上面的 pattern。命中就拒絕執行（HTTP 400），不讓程式跑起來。這是防止 AI 部署探針腳本直接印出整個 env。
+
+---
+
 ## newgrp 說明
 
 `setup.sh` 跑完如果看到：
